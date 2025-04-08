@@ -230,6 +230,12 @@ MiniTest.config = {
 ---   to customize execution output (like adding custom notes, etc).
 MiniTest.current = { all_cases = nil, case = nil }
 
+MiniTest.execute_debug_hooks = false
+-- These might be better off in the configuration, since the debugger hooks should not
+-- change runtime
+MiniTest.debug_pre_case_hook = nil
+MiniTest.debug_post_case_hook = nil
+
 -- Module functionality =======================================================
 --- Create test set
 ---
@@ -467,6 +473,10 @@ MiniTest.run_at_location = function(location, opts)
 
   MiniTest.run(opts)
 end
+
+-- I realize now that this would execute in the wrong context, and that the child would not have access to it
+-- Would be ideal to find a way to communicate this to the child, a vim global variable?
+MiniTest.toggle_execute_debug_hooks = function() MiniTest.execute_debug_hooks = not MiniTest.execute_debug_hooks end
 
 --- Collect test cases
 ---
@@ -1778,6 +1788,8 @@ H.schedule_case = function(case, case_num, opts)
       -- Ensure that `skip()` affects only `pre_case` hooks and case
       H.cache.skip_message = nil
 
+      if MiniTest.execute_debug_hooks and MiniTest.debug_pre_case_hook then MiniTest.debug_pre_case_hook() end
+
       -- Executing `*_case` hooks on every retry should ensure same case setup
       -- (like cleanly restarted child process)
       exec_hooks('pre', 'case')
@@ -1794,6 +1806,7 @@ H.schedule_case = function(case, case_num, opts)
 
       exec_hooks('post', 'case')
 
+      if MiniTest.execute_debug_hooks and MiniTest.debug_post_case_hook then MiniTest.debug_post_case_hook() end
       if ok_case then break end
     end
 
